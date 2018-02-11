@@ -24,7 +24,7 @@ public class Robot extends IterativeRobot {
  Timer c = new Timer();
  private double teleSPD=.25;
  
- //encoder initialization
+ //encoder initialization woo
  Encoder encLeft; {
 	 encLeft = new Encoder(0, 1, false, Encoder.EncodingType.k4X);
 	 encLeft.reset(); //sets the encoder to 0
