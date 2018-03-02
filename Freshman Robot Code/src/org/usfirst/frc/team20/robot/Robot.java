@@ -10,7 +10,6 @@ import com.ctre.phoenix.motorcontrol.FeedbackDevice;
 import com.ctre.phoenix.motorcontrol.can.TalonSRX;
 import com.kauailabs.navx.frc.AHRS;
 import com.kauailabs.navx.frc.AHRS.SerialDataType;
-
 import edu.wpi.first.wpilibj.IterativeRobot;
 import edu.wpi.first.wpilibj.SerialPort;
 import edu.wpi.first.wpilibj.Timer;
@@ -28,6 +27,8 @@ public class Robot extends IterativeRobot {
  Timer c = new Timer();
  private double teleSPD=.75;
  AHRS gyro = new AHRS(SerialPort.Port.kMXP);
+ double initAngle;
+ int autoChoice;
  
  //initialize controllers
  @Override
@@ -46,6 +47,35 @@ public class Robot extends IterativeRobot {
  @Override
  public void autonomousInit() {
   c.start();
+  //begins at 0,0,0
+  gyro.resetDisplacement();
+  initAngle=gyro.getYaw();
+  
+  String gameData = DriverStation.getInstance().getGameSpecificMessage();
+  
+  //field input
+  if(gameData.charAt(0) == 'L'){ //first switch is on the left side
+	  autoChoice=1;//runs third auto
+  }
+  else if (gameData.charAt(0) == 'R'){
+	  autoChoice=2;//runs second auto
+  }
+  else{
+	  autoChoice=0;//runs first auto as default
+  }
+  
+  //altering the desired angle in order to turn!(TEST)
+  if(autoChoice==1) {//turn left
+	  initAngle-=90;
+  }
+  else if(autoChoice==2) {//turn right
+	  initAngle-=90;
+  }
+ }
+ 
+ @Override
+ public void testPeriodic() {
+	 System.out.println("Yaw angle reading: "+gyro.getYaw());
  }
  
  //begin the auto phase
@@ -54,7 +84,7 @@ public class Robot extends IterativeRobot {
 	 //commented out so we could develop a navX auto
 	 
      //timeBasedAuto();
-	 encoderBasedAuto();
+	 //encoderBasedAuto();
 	 navXBasedAuto();
  }
  
@@ -66,6 +96,7 @@ public class Robot extends IterativeRobot {
   double right = driverJoy.getRightYAxis();
   double leftTurn = -(driverJoy.getLeftTriggerAxis()); //Left/Right Joystick Looking Things
   double rightTurn= -(driverJoy.getRightTriggerAxis());   //These are inverted to accomodate for correct turning -Liam
+  double difference=gyro.getYaw()-initAngle;
   
   //Tank Mode (Unactivated)
   /*
@@ -74,78 +105,77 @@ public class Robot extends IterativeRobot {
   */
   
   //Arcade Mode
-  bl.set(ControlMode.PercentOutput, (left - rightTurn + leftTurn)*teleSPD); //set speed values with SPD constant specified at the top
-  br.set(ControlMode.PercentOutput, (-left - rightTurn + leftTurn)*teleSPD);
-  
-  System.out.println("X"+gyro.getDisplacementX()); //forward and backward
-  System.out.println("Y"+gyro.getDisplacementY()); //left and right
-  System.out.println("Z"+gyro.getDisplacementZ()); //up and down
-  System.out.println("Yaw"+gyro.getYaw());
+  bl.set(ControlMode.PercentOutput, (left - rightTurn + leftTurn)*(teleSPD)); //set speed values with SPD constant specified at the top
+  br.set(ControlMode.PercentOutput, (-left - rightTurn + leftTurn)*(teleSPD));
  }
  
  public void timeBasedAuto() {
-	  int autoChoice=0;
-	  double timeStamp;
-	  String gameData = DriverStation.getInstance().getGameSpecificMessage();
+	 
+	 //timeBased wariables
+	  double timeStamp1, timeStamp2;
 	  
-	  //field input
-	  if(gameData.charAt(0) == 'L'){ //first switch is on the left side
-		  autoChoice=1;//runs third auto
-	  }
-	  else if (gameData.charAt(0) == 'R'){
-		  autoChoice=2;//runs second auto
-	  }
-	  else{
-		  autoChoice=0;//runs first auto as default
-	  }
-	  
+	  //switch case for different autos
 	  switch(autoChoice) {
+	  
 	   case 0://forward drive into the switch from middle position
-	    timeStamp=5.25;//this will get us across the line;
-	    if(c.get() < timeStamp){//while the game timer is less than our time stamp
-	     bl.set(ControlMode.PercentOutput, -0.25); //move forward
-	     br.set(ControlMode.PercentOutput, 0.25);
-	    }else{
-	    bl.set(ControlMode.PercentOutput, 0); //STAHPP
-	    br.set(ControlMode.PercentOutput, 0);
-	    }
+		   
+		    timeStamp1=6;//this will get us across the line
+		    
+		    if(c.get() < timeStamp1){//while the game timer is less than our time stamp
+			     bl.set(ControlMode.PercentOutput, -0.25); //move forward
+			     br.set(ControlMode.PercentOutput, 0.25);
+		    }else{
+			    bl.set(ControlMode.PercentOutput, 0); //STAHPP
+			    br.set(ControlMode.PercentOutput, 0);
+		    }
+		    
+		    //drop the cube
 	    
-	    //drop the cube
 	    break;
 	    
 	   case 1://forward drive and turn left when starting from the right side (rightDesired==true)
-	    timeStamp=6;//six seconds will get us across the line and next to the switch
-	    if(c.get() < timeStamp){//while the game timer is less than our time stamp
-	     bl.set(ControlMode.PercentOutput, -0.25); //move forward
-	     br.set(ControlMode.PercentOutput, 0.25);
-	    }else{
-	    bl.set(ControlMode.PercentOutput, 0); //STAHPP
-	    br.set(ControlMode.PercentOutput, 0);
-	    }
 	    
-	    //turn the robot 90 degrees left (can we use encoders to figure out how much/how long we need to turn?)
-	    bl.set(ControlMode.PercentOutput, .25);
-	    br.set(ControlMode.PercentOutput, .25);
-	    
-	    //drop the cube
-	    break;
+			timeStamp1=6;
+			timeStamp2=7;
+		    if(c.get() < timeStamp1){//while the game timer is less than our time stamp
+			    bl.set(ControlMode.PercentOutput, -0.25); //move forward
+			    br.set(ControlMode.PercentOutput, 0.25);
+		    }
+		    
+		    else if(c.get()<timeStamp2) {
+			   bl.set(ControlMode.PercentOutput, -.25); //turn to the left
+			   br.set(ControlMode.PercentOutput, -.25);
+			}
+		    else{
+			    bl.set(ControlMode.PercentOutput, 0); //STAHPP
+			    br.set(ControlMode.PercentOutput, 0);
+		    
+		       //or
+			   
+			   //drop the cube
+		    }
+		    break;
 	    
 	   case 2://forward drive and turn right when starting from the left side (rightDesired==false)
-	    
-	    timeStamp=6;
-	    if(c.get() < timeStamp){//while the game timer is less than our time stamp
-	     bl.set(ControlMode.PercentOutput, -0.25); //move forward
-	     br.set(ControlMode.PercentOutput, 0.25);
-	    }else{
-	    bl.set(ControlMode.PercentOutput, 0); //STAHPP
-	    br.set(ControlMode.PercentOutput, 0);
-	    }
-	    
-	  //turn the robot 90 degrees left (can we use encoders to figure out how much/how long we need to turn?)
-	    bl.set(ControlMode.PercentOutput, -.25);
-	    br.set(ControlMode.PercentOutput, -.25);
-	    
-	    //drop the cube
+		    
+		    timeStamp1=6;
+		    timeStamp2=7;
+		    if(c.get() < timeStamp1){//while the game timer is less than our time stamp
+			     bl.set(ControlMode.PercentOutput, -0.25); //move forward
+			     br.set(ControlMode.PercentOutput, 0.25);
+		    }
+		    else if(c.get()<timeStamp2) {
+			   bl.set(ControlMode.PercentOutput, .25); //turn to the right
+			   br.set(ControlMode.PercentOutput, .25);
+			}
+		    else{
+			    bl.set(ControlMode.PercentOutput, 0); //STAHPP
+			    br.set(ControlMode.PercentOutput, 0);
+		    
+		       //or
+			   
+			   //drop the cube
+		    }
 	    break;
 	    
 	   case 3://drive to the exchange zone and drop preload when starting from left position
@@ -159,47 +189,98 @@ public class Robot extends IterativeRobot {
 	  }
  }
  public void navXBasedAuto() {
-	 int autoChoice=0;
 	 
-	 double x=gyro.getDisplacementX();
-	 double y=gyro.getDisplacementY();
-	 double z=gyro.getDisplacementZ();
+	 int autoChoice=0;
+	 double difference;
+	 
+	 //encoder variables
 	 //meters to feet
 	 double conversionFactor=3.28084;
 	 //in feet
-	 double distanceStamp=11.0;
-	 
-	  String gameData = DriverStation.getInstance().getGameSpecificMessage();
-	  
-	  //field input
-	  if(gameData.charAt(0) == 'L'){ //first switch is on the left side
-		  autoChoice=1;//runs third auto
-	  }
-	  else if (gameData.charAt(0) == 'R'){
-		  autoChoice=2;//runs second auto
-	  }
-	  else{
-		  autoChoice=0;//runs first auto as default
-	  }
-	  
+	 double distanceStamp=11.0/conversionFactor; //before da turn
+	 double distanceStamp2=4.0/conversionFactor; //after da turn
+	 boolean turned=false;
 	  switch(autoChoice) {
+	  
+	  
 	   case 0://forward drive into the switch from middle position
-		   if(x < distanceStamp){
-			   bl.set(ControlMode.PercentOutput, -0.25); //move forward
-			   br.set(ControlMode.PercentOutput, 0.25);
-		   }else{
-			   bl.set(ControlMode.PercentOutput, 0); //STAHPP
+		   difference=gyro.getYaw()-initAngle;
+		   if(gyro.getDisplacementX() < distanceStamp){
+			   bl.set(ControlMode.PercentOutput, -0.25-difference*.005); //move forward
+			   br.set(ControlMode.PercentOutput, 0.25-difference*.005);
+		   }
+		   else{
+			   bl.set(ControlMode.PercentOutput, 0); //STAHHHPPPP
 			   br.set(ControlMode.PercentOutput, 0);
 		   }
+		   System.out.println("Yaw angle reading: "+gyro.getYaw());
+		   System.out.println("X displacement: "+gyro.getDisplacementX());
+		   
 	    break;
 	    
-	   case 1://forward drive and turn left when starting from the right side (rightDesired==true)
-
-	    break;
-	    
-	   case 2://forward drive and turn right when starting from the left side (rightDesired==false)
+	   case 1://forward drive and turn left when starting from the right side
+		   difference=gyro.getYaw()-initAngle;
+	   if(gyro.getDisplacementX() < distanceStamp && turned==false){
+		   bl.set(ControlMode.PercentOutput, -0.25-difference*.005); //move forward
+		   br.set(ControlMode.PercentOutput, 0.25-difference*.005);
+		   //refresh the difference variable
+		   difference=gyro.getYaw()-initAngle;
+	   }
+	   
+	   //update turned and target angle
+	   if(turned==false&&gyro.getDisplacementX()>=distanceStamp) {
+		   turned=true;
+		   initAngle+=90; //should turn to the left
+	   }
+	   
+	   //move after turning
+	   if(gyro.getDisplacementY() > -distanceStamp2 && turned==true) { //should move 2 feet left as a negative number
+		   bl.set(ControlMode.PercentOutput, -0.25-difference*.005); //move forward
+		   br.set(ControlMode.PercentOutput, 0.25-difference*.005);
+		   difference=gyro.getYaw()-initAngle;
+	   }
+	   else{
+		   bl.set(ControlMode.PercentOutput, 0); //STAHPP
+		   br.set(ControlMode.PercentOutput, 0);
+	   }
+	   System.out.println("Yaw angle reading: "+gyro.getYaw());
+	   System.out.println("X displacement: "+gyro.getDisplacementX());
+	   System.out.println("Y displacement: "+gyro.getDisplacementY());
+	   
+	   //drop the cube code goes here!!!
 	   
 	    break;
+	    
+   case 2://forward drive and turn right when starting from the left side
+	   difference=gyro.getYaw()-initAngle;
+	   if(gyro.getDisplacementX() < distanceStamp && turned==false){
+		   bl.set(ControlMode.PercentOutput, -0.25-difference*.005); //move forward
+		   br.set(ControlMode.PercentOutput, 0.25-difference*.005);
+		   //refresh the difference variable
+		   difference=gyro.getYaw()-initAngle;
+	   }
+	   
+	   //update turned and target angle
+	   if(turned==false&&gyro.getDisplacementX()>=distanceStamp) {
+		   turned=true;
+		   initAngle-=90; //should turn to the right
+	   }
+	   
+	   //move after turning
+	   if(gyro.getDisplacementY() < distanceStamp2 && turned==true) { //should move 2 feet right as a negative number
+		   bl.set(ControlMode.PercentOutput, -0.25-difference*.005); //move forward
+		   br.set(ControlMode.PercentOutput, 0.25-difference*.005);
+		   difference=gyro.getYaw()-initAngle;
+	   }
+	   else{
+		   bl.set(ControlMode.PercentOutput, 0); //STAHPP
+		   br.set(ControlMode.PercentOutput, 0);
+	   }
+	   System.out.println("Yaw angle reading: "+gyro.getYaw());
+	   System.out.println("X displacement: "+gyro.getDisplacementX());
+	   System.out.println("Y displacement: "+gyro.getDisplacementY());
+	   //drop the cube code goes here!!!
+	   	   break; 
 	    
 	   case 3://drive to the exchange zone and drop preload when starting from left position
 		   break;
@@ -210,40 +291,24 @@ public class Robot extends IterativeRobot {
 	   case 5://drive to the exchange zone and drop preload when starting from right position
 		   break;
 	  }
- }
+  }
  
  public void encoderBasedAuto() {
 	 
 	 //TEST PRINT
 	  System.out.println("Encoder left: " + bl.getSelectedSensorPosition(0));
-	  System.out.println("Encoder right: " + br.getSelectedSensorPosition(0)); 
-	  
-	  
-	  
-	  int autoChoice=0;
-	  String gameData = DriverStation.getInstance().getGameSpecificMessage();
-	  
-	  //field input
-	  if(gameData.charAt(0) == 'L'){ //first switch is on the left side
-		  autoChoice=1;//runs third auto
-	  }
-	  else if (gameData.charAt(0) == 'R'){
-		  autoChoice=2;//runs second auto
-	  }
-	  else{
-		  autoChoice=0;//runs first auto as default
-	  }
+	  System.out.println("Encoder right: " + br.getSelectedSensorPosition(0));
 	  
 	  switch(autoChoice) {
 	   case 0://forward drive into the switch from middle position
 
 	    break;
 	    
-	   case 1://forward drive and turn left when starting from the right side (rightDesired==true)
+	   case 1://forward drive and turn left when starting from the right side 
 
 	    break;
 	    
-	   case 2://forward drive and turn right when starting from the left side (rightDesired==false)
+	   case 2://forward drive and turn right when starting from the left side
 	   
 	    break;
 	    
@@ -256,5 +321,5 @@ public class Robot extends IterativeRobot {
 	   case 5://drive to the exchange zone and drop preload when starting from right position
 		   break;
 	  }
- }
+   }
 }
